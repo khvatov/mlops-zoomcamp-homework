@@ -8,7 +8,6 @@ mlflow= "*"
 numpy = "*"
 pandas = "*"
 scikit-learn = "1.5.2"
-jupyterlab = "*"
 flask = "*"
 gunicorn = "*"
 xgboost = "*"
@@ -22,6 +21,7 @@ hyperopt = "*"
 click = "*"
 
 [dev-packages]
+jupyterlab = "*"
 
 [requires]
 python_version = "3.11"
