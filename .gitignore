@@ -176,4 +176,6 @@ cython_debug/
 
 data/
 models/
+mlruns/
+*.db
 nohup.out

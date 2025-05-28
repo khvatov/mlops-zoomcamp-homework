@@ -4,6 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+mlflow= "*"
 numpy = "*"
 pandas = "*"
 scikit-learn = "1.5.2"
@@ -17,6 +18,8 @@ pyarrow = "*"
 fastparquet = "*"
 matplotlib = "*"
 seaborn = "*"
+hyperopt = "*"
+click = "*"
 
 [dev-packages]
 
