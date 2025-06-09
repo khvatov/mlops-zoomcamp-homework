@@ -1,18 +1,22 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import mlflow.sklearn
 import pandas as pd
-import xgboost as xgb
+
 import pickle
 import mlflow
 
 from sklearn.feature_extraction import DictVectorizer
+from sklearn.linear_model import LinearRegression
+
 from sklearn.metrics import root_mean_squared_error
+
 
 from pathlib import Path
 
 mlflow.set_tracking_uri("http://localhost:5000")
-mlflow.set_experiment("nyc-taxi-experiment")
+mlflow.set_experiment("nyc-taxi-experiment-hw3")
 
 
 models_folder = Path('models')
@@ -21,20 +25,22 @@ models_folder.mkdir(exist_ok=True)
 
 
 def read_dataframe(year, month):
-    url = f'https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_{year}-{month:02d}.parquet'
+    url = f'https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_{year}-{month:02d}.parquet'
     
     df = pd.read_parquet(url)
+    print(f"Read {len(df)} rows for {year}-{month:02d}")
 
-    df['duration'] = df.lpep_dropoff_datetime - df.lpep_pickup_datetime
-    df.duration = df.duration.apply(lambda td: td.total_seconds() / 60)
+    df['duration'] = df.tpep_dropoff_datetime - df.tpep_pickup_datetime
+    df.duration = df.duration.dt.total_seconds() / 60
 
+    # Remove outliers
     df = df[(df.duration >= 1) & (df.duration <= 60)]
 
     categorical = ['PULocationID', 'DOLocationID']
     df[categorical] = df[categorical].astype(str)
 
-    df['PU_DO'] = df['PULocationID'] + '_' + df['DOLocationID']
-    
+    #df['PU_DO'] = df['PULocationID'] + '_' + df['DOLocationID']
+    print(f"After cleaning {len(df)} rows for {year}-{month:02d}")
 
     return df
 
@@ -42,7 +48,7 @@ def read_dataframe(year, month):
 
 
 def create_X(df, dv=None):
-    categorical = ['PU_DO'] #'PULocationID', 'DOLocationID']
+    categorical = ['PULocationID', 'DOLocationID']
     numerical = ['trip_distance']
 
     dicts = df[categorical + numerical].to_dict(orient='records')
@@ -53,12 +59,6 @@ def create_X(df, dv=None):
     else:
         X = dv.transform(dicts)
 
-
-    # train_dicts = df_train[categorical + numerical].to_dict(orient='records')
-    # X_train = dv.fit_transform(train_dicts)
-
-    # val_dicts = df_val[categorical + numerical].to_dict(orient='records')
-    # X_val = dv.transform(val_dicts)
     return X, dv
 
 
@@ -66,30 +66,20 @@ def create_X(df, dv=None):
 
 def train_model(X_train, y_train, X_val, y_val, dv):
     with mlflow.start_run() as run:
-        train = xgb.DMatrix(X_train, label=y_train)
-        valid = xgb.DMatrix(X_val, label=y_val)
-
-        best_params = {
-            'learning_rate': 0.09585355369315604,
-            'max_depth': 30,
-            'min_child_weight': 1.060597050922164,
-            'objective': 'reg:linear',
-            'reg_alpha': 0.018060244040060163,
-            'reg_lambda': 0.011658731377413597,
-            'seed': 42
-        }
-
-        mlflow.log_params(best_params)
-
-        booster = xgb.train(
-            params=best_params,
-            dtrain=train,
-            num_boost_round=30,
-            evals=[(valid, 'validation')],
-            early_stopping_rounds=50
-        )
-
-        y_pred = booster.predict(valid)
+        
+        lr = LinearRegression()
+        lr.fit(X_train, y_train)
+   
+        print(f"Intercept: {lr.intercept_}")
+        print(f"Coefficients: {lr.coef_}")
+        mlflow.log_param("model_type", "LinearRegression")
+        mlflow.log_param("num_features", X_train.shape[1])
+        mlflow.log_param("num_train_samples", X_train.shape[0])
+        mlflow.log_param("num_val_samples", X_val.shape[0])
+        mlflow.log_metric("intercept", lr.intercept_)
+    
+    
+        y_pred = lr.predict(X_val)
         rmse = root_mean_squared_error(y_val, y_pred)
         mlflow.log_metric("rmse", rmse)
 
@@ -98,7 +88,7 @@ def train_model(X_train, y_train, X_val, y_val, dv):
             pickle.dump(dv, f_out)
         mlflow.log_artifact("models/preprocessor.b", artifact_path="preprocessor")
 
-        mlflow.xgboost.log_model(booster, artifact_path="models_mlflow")
+        mlflow.sklearn.log_model(lr, artifact_path="models_mlflow")
 
         return run.info.run_id
 
@@ -134,6 +124,8 @@ if __name__ == "__main__":
     args = parsers.parse_args()
 
     run_id = run(args.year, args.month)
+
+
     #save run_id to a file
     with open("models/run_id.txt", "w") as f:
         f.write(run_id)
