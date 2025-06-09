@@ -4,24 +4,25 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-mlflow= "*"
-numpy = "*"
-pandas = "*"
-scikit-learn = "1.5.2"
 flask = "*"
 gunicorn = "*"
-xgboost = "*"
 tqdm = "*"
 tensorflow = "*"
 pyarrow = "*"
 fastparquet = "*"
 matplotlib = "*"
 seaborn = "*"
-hyperopt = "*"
 click = "*"
+mlflow = "*"
+jupyter = "*"
+pandas = "*"
+numpy = "*"
+scikit-learn = "*"
+xgboost = "*"
+hyperopt = "*"
 
 [dev-packages]
 jupyterlab = "*"
 
 [requires]
-python_version = "3.11"
+python_version = "3.12"
