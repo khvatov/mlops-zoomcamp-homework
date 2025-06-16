@@ -180,3 +180,4 @@ mlruns/
 *.db
 nohup.out
 mlartifacts/
+output/
